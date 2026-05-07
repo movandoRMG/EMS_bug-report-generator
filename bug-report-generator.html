@@ -243,6 +243,34 @@
     }
     .error-msg.visible { display: block; }
 
+    .adj-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 1rem; padding-top: 1rem;
+      border-top: 1px solid rgba(231,185,82,0.15);
+    }
+    .adj-label {
+      font-size: 10px; color: var(--muted); font-family: var(--mono);
+      text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;
+    }
+    .adj-input {
+      width: 80px; background: #001e3c;
+      border: 1.5px solid #00579550 !important; border-radius: 6px !important;
+      color: var(--active) !important; font-family: var(--mono) !important;
+      font-size: 14px !important; font-weight: 500;
+      padding: 5px 10px !important; outline: none;
+      text-align: center; box-shadow: none !important;
+      transition: border-color 0.2s;
+    }
+    .adj-input:focus { border-color: var(--active) !important; }
+    .adj-btn {
+      padding: 5px 14px; background: transparent;
+      border: 1px solid rgba(231,185,82,0.35); border-radius: 6px;
+      color: var(--active); font-size: 11px; font-family: var(--mono);
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .adj-btn:hover { background: rgba(231,185,82,0.12); border-color: var(--active); }
+    .adj-btn.saved { border-color: var(--success); color: var(--success); }
+
     html { scroll-behavior: smooth; }
   </style>
 </head>
@@ -264,13 +292,22 @@
     </header>
 
     <div class="id-banner">
-      <div>
-        <div class="id-label">ID del reporte</div>
-        <div class="id-value" id="id-preview">MMDD-103</div>
-      </div>
-      <div>
-        <div class="id-label" style="text-align:right">Correlativo</div>
-        <div class="id-counter">N° <span id="counter-display">103</span></div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="id-label">ID del reporte</div>
+            <div class="id-value" id="id-preview">MMDD-103</div>
+          </div>
+          <div style="text-align:right">
+            <div class="id-label">Correlativo</div>
+            <div class="id-counter">N° <span id="counter-display">103</span></div>
+          </div>
+        </div>
+        <div class="adj-row">
+          <span class="adj-label">Corregir correlativo actual:</span>
+          <input class="adj-input" type="number" id="adj-input" min="0" step="1" />
+          <button class="adj-btn" id="adj-btn" onclick="applyAdj()">Aplicar</button>
+        </div>
       </div>
     </div>
 
@@ -429,6 +466,19 @@
     const next = currentId + 1;
     document.getElementById('counter-display').textContent = next;
     document.getElementById('id-preview').textContent = buildPreviewId(document.getElementById('fecha').value);
+    document.getElementById('adj-input').value = currentId;
+  }
+
+  function applyAdj() {
+    const raw = parseInt(document.getElementById('adj-input').value, 10);
+    if (isNaN(raw) || raw < 0) return;
+    currentId = raw;
+    localStorage.setItem(ID_KEY, String(currentId));
+    updatePreview();
+    const btn = document.getElementById('adj-btn');
+    btn.textContent = '✓ Guardado';
+    btn.classList.add('saved');
+    setTimeout(() => { btn.textContent = 'Aplicar'; btn.classList.remove('saved'); }, 2000);
   }
 
   document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
