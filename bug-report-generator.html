@@ -448,60 +448,77 @@
   </div>
 </footer>
 
-<script>
-  const ID_KEY = 'bugReportCurrentId';
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, runTransaction }
+    from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-  // Último correlativo generado/publicado en el HTML
+  const firebaseConfig = {
+    apiKey: "AIzaSyAES-vW3kshnA9iQ6VexIIFu-m6IUXV_2o",
+    authDomain: "ruizmier-bug-tracker.firebaseapp.com",
+    databaseURL: "https://ruizmier-bug-tracker-default-rtdb.firebaseio.com",
+    projectId: "ruizmier-bug-tracker",
+    storageBucket: "ruizmier-bug-tracker.firebasestorage.app",
+    messagingSenderId: "290006770546",
+    appId: "1:290006770546:web:581ab945ebd879ab7e73eb"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+  const counterRef = ref(db, 'counter/currentId');
+
+  // Valor mínimo hardcodeado (por si Firebase arranca vacío)
   const HTML_CURRENT_ID = 114;
-  
-  const savedId = parseInt(localStorage.getItem(ID_KEY), 10);
-  
-  let currentId = Math.max(
-    Number.isFinite(savedId) ? savedId : 0,
-    HTML_CURRENT_ID
-  );
+  let currentId = HTML_CURRENT_ID;
 
-localStorage.setItem(ID_KEY, currentId);
-
+  /* ── helpers ── */
   function pad(n) { return String(n).padStart(2, '0'); }
 
   function buildPreviewId(fechaVal) {
     if (!fechaVal) return 'MMDD-' + (currentId + 1);
-    const parts = fechaVal.split('-');
-    return pad(parts[1]) + pad(parts[2]) + '-' + (currentId + 1);
+    const [, mm, dd] = fechaVal.split('-');
+    return pad(mm) + pad(dd) + '-' + (currentId + 1);
   }
 
   function updatePreview() {
-    const next = currentId + 1;
-    document.getElementById('counter-display').textContent = next;
-    document.getElementById('id-preview').textContent = buildPreviewId(document.getElementById('fecha').value);
+    document.getElementById('counter-display').textContent = currentId + 1;
+    document.getElementById('id-preview').textContent =
+      buildPreviewId(document.getElementById('fecha').value);
     document.getElementById('adj-input').value = currentId;
   }
 
-  function applyAdj() {
+  /* ── Firebase: escucha en tiempo real ── */
+  onValue(counterRef, (snapshot) => {
+    const val = snapshot.val();
+    if (val === null) {
+      // Primera vez: inicializa Firebase con el valor del HTML
+      set(counterRef, HTML_CURRENT_ID);
+      currentId = HTML_CURRENT_ID;
+    } else {
+      currentId = Math.max(val, HTML_CURRENT_ID);
+    }
+    updatePreview();
+  });
+
+  /* ── exponer funciones al HTML (onclick="...") ── */
+  window.applyAdj = function () {
     const raw = parseInt(document.getElementById('adj-input').value, 10);
     if (isNaN(raw) || raw < 0) return;
-    currentId = raw;
-    localStorage.setItem(ID_KEY, String(currentId));
-    updatePreview();
+    set(counterRef, raw);          // onValue actualizará currentId
     const btn = document.getElementById('adj-btn');
     btn.textContent = '✓ Guardado';
     btn.classList.add('saved');
     setTimeout(() => { btn.textContent = 'Aplicar'; btn.classList.remove('saved'); }, 2000);
-  }
+  };
 
-  document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
-  document.getElementById('fecha').addEventListener('input', updatePreview);
-  updatePreview();
-
-  function generate() {
+  window.generate = function () {
     const errEl = document.getElementById('error-msg');
     errEl.classList.remove('visible');
 
-    const fecha   = document.getElementById('fecha').value;
-    const tipo    = document.getElementById('tipo').value;
-    const titulo  = document.getElementById('titulo').value.trim();
-    const tester  = document.getElementById('tester').value;
+    const fecha  = document.getElementById('fecha').value;
+    const tipo   = document.getElementById('tipo').value;
+    const titulo = document.getElementById('titulo').value.trim();
+    const tester = document.getElementById('tester').value;
 
     const missing = [];
     if (!fecha)  missing.push('Fecha');
@@ -515,45 +532,55 @@ localStorage.setItem(ID_KEY, currentId);
       return;
     }
 
-    const parts = fecha.split('-');
-    const id = pad(parts[1]) + pad(parts[2]) + '-' + (currentId + 1);
+    // runTransaction garantiza incremento atómico (sin colisiones entre usuarios)
+    runTransaction(counterRef, (current) =>
+      (current === null ? HTML_CURRENT_ID : current) + 1
+    ).then(({ committed, snapshot }) => {
+      if (!committed) return;
 
-    const json = {
-      "ID": id,
-      "FECHA": fecha,
-      "TIPO DE ERROR": tipo,
-      "TITULO": titulo,
-      "VERSION": document.getElementById('version').value.trim() || '2.0.8',
-      "DESCRIPCION": document.getElementById('descripcion').value.trim(),
-      "SUGERENCIA": document.getElementById('sugerencia').value.trim(),
-      "RUTA": document.getElementById('ruta').value,
-      "URL": document.getElementById('url').value.trim(),
-      "USUARIO SIS": document.getElementById('usuario').value.trim(),
-      "TESTER": tester
-    };
-    const title = 'Issue Title: ' + tipo + '/'+id+': ' + titulo;
-    const output = title + '\n```json\n' + JSON.stringify(json, null, 2) + '\n```';
-    document.getElementById('output-box').textContent = output;
-    document.getElementById('output-section').classList.add('visible');
+      const newId  = snapshot.val();
+      const [, mm, dd] = fecha.split('-');
+      const id     = pad(mm) + pad(dd) + '-' + newId;
 
-    currentId++;
-    localStorage.setItem(ID_KEY, String(currentId));
-    updatePreview();
+      const json = {
+        "ID": id,
+        "FECHA": fecha,
+        "TIPO DE ERROR": tipo,
+        "TITULO": titulo,
+        "VERSION": document.getElementById('version').value.trim() || '2.0.10',
+        "DESCRIPCION": document.getElementById('descripcion').value.trim(),
+        "SUGERENCIA":  document.getElementById('sugerencia').value.trim(),
+        "RUTA":        document.getElementById('ruta').value,
+        "URL":         document.getElementById('url').value.trim(),
+        "USUARIO SIS": document.getElementById('usuario').value.trim(),
+        "TESTER": tester
+      };
 
-    setTimeout(() => {
-      document.getElementById('output-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 100);
-  }
+      const title  = 'Issue Title: ' + tipo + '/' + id + ': ' + titulo;
+      const output = title + '\n```json\n' + JSON.stringify(json, null, 2) + '\n```';
+      document.getElementById('output-box').textContent = output;
+      document.getElementById('output-section').classList.add('visible');
 
-  function copyOutput() {
-    const text = document.getElementById('output-box').textContent;
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = document.getElementById('btn-copy');
-      btn.textContent = '✓ Copiado!';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = '📋 Copiar'; btn.classList.remove('copied'); }, 2000);
+      setTimeout(() => {
+        document.getElementById('output-section')
+          .scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
     });
-  }
+  };
+
+  window.copyOutput = function () {
+    navigator.clipboard.writeText(document.getElementById('output-box').textContent)
+      .then(() => {
+        const btn = document.getElementById('btn-copy');
+        btn.textContent = '✓ Copiado!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '📋 Copiar'; btn.classList.remove('copied'); }, 2000);
+      });
+  };
+
+  /* ── init fecha y preview ── */
+  document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fecha').addEventListener('input', updatePreview);
 </script>
 </body>
 </html>
