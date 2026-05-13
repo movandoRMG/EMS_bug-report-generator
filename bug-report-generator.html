@@ -451,12 +451,17 @@
 <script>
   const ID_KEY = 'bugReportCurrentId';
 
-  let currentId = parseInt(localStorage.getItem(ID_KEY), 10);
+  // Último correlativo generado/publicado en el HTML
+  const HTML_CURRENT_ID = 114;
   
-  if (!Number.isFinite(currentId)) {
-    currentId = 114;
-    localStorage.setItem(ID_KEY, currentId);
-  }
+  const savedId = parseInt(localStorage.getItem(ID_KEY), 10);
+  
+  let currentId = Math.max(
+    Number.isFinite(savedId) ? savedId : 0,
+    HTML_CURRENT_ID
+  );
+
+localStorage.setItem(ID_KEY, currentId);
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
