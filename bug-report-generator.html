@@ -296,11 +296,11 @@
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div>
             <div class="id-label">ID del reporte</div>
-            <div class="id-value" id="id-preview">MMDD-103</div>
+            <div class="id-value" id="id-preview">MMDD-111</div>
           </div>
           <div style="text-align:right">
             <div class="id-label">Correlativo</div>
-            <div class="id-counter">N° <span id="counter-display">103</span></div>
+            <div class="id-counter">N° <span id="counter-display">111</span></div>
           </div>
         </div>
         <div class="adj-row">
@@ -321,7 +321,7 @@
         </div>
         <div class="field">
           <label>Versión</label>
-          <input type="text" id="version" value="2.0.8" />
+          <input type="text" id="version" value="2.0.10" />
         </div>
       </div>
       <div class="row-2">
@@ -329,11 +329,8 @@
           <label>Tipo de Error <span class="req">*</span></label>
           <select id="tipo">
             <option value="">— seleccionar —</option>
-            <option>Funcional</option>
-            <option>Datos</option>
-            <option>UI</option>
-            <option>Seguridad</option>
-            <option>Consulta</option>
+            <option>fix</option>
+            <option>feat</option>
           </select>
         </div>
         <div class="field">
@@ -453,7 +450,7 @@
 
 <script>
   const ID_KEY = 'bugReportCurrentId';
-  let currentId = parseInt(localStorage.getItem(ID_KEY) || '102');
+  let currentId = parseInt(localStorage.getItem(ID_KEY) || '110');
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -523,8 +520,8 @@
       "USUARIO SIS": document.getElementById('usuario').value.trim(),
       "TESTER": tester
     };
-
-    const output = '```json\n' + JSON.stringify(json, null, 2) + '\n```';
+    const title = 'Issue Title: ' + tipo + '/'+id+': ' + titulo;
+    const output = title + '\n```json\n' + JSON.stringify(json, null, 2) + '\n```';
     document.getElementById('output-box').textContent = output;
     document.getElementById('output-section').classList.add('visible');
 
