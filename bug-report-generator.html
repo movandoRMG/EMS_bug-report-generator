@@ -450,7 +450,8 @@
 
 <script>
   const ID_KEY = 'bugReportCurrentId';
-  let currentId = parseInt(localStorage.getItem(ID_KEY) || '110');
+  const FALLBACK = 110;
+  let currentId = Math.max(parseInt(localStorage.getItem(ID_KEY) || '0'), FALLBACK);
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
